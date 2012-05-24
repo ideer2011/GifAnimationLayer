@@ -18,11 +18,14 @@ inline static double CGImageSourceGetGifFrameDelay(CGImageSourceRef imageSource,
     if (theImageProperties) {
         CFDictionaryRef gifProperties = CFDictionaryGetValue(theImageProperties, kCGImagePropertyGIFDictionary);
         if (gifProperties) {
-            NSNumber *frameDurationValue = (__bridge NSNumber *)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFDelayTime);
+            NSNumber *frameDurationValue = (__bridge NSNumber *)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFUnclampedDelayTime);
             frameDuration = [frameDurationValue floatValue];
             if (frameDuration <= 0) {
-                NSLog(@"bad frame duration for %@, %d, %f, fixing...(set to 1/60)", imageSource, index, frameDuration);
-                frameDuration = 1/60;
+                frameDuration = [(__bridge NSNumber *)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFDelayTime) floatValue];
+                if (frameDuration <= 0) {
+                    NSLog(@"bad frame duration for %@, %d, %f, fixing...(set to 1/15)", imageSource, index, frameDuration);
+                    frameDuration = 1.0f/15;
+                }
             }
         }
         CFRelease(theImageProperties);
