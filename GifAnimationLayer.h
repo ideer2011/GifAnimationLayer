@@ -3,7 +3,7 @@
 //  gifLayerTest
 //
 //  Created by Zhang Yi on 12-5-24.
-//  Copyright (c) 2012年 __MyCompanyName__. All rights reserved.
+//  Copyright (c) 2012年 iDeer Inc. All rights reserved.
 //
 
 #import <QuartzCore/QuartzCore.h>
