@@ -105,9 +105,9 @@ inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSour
     }
 }
 
-- (void)startAnimation
+- (void)startAnimating
 {
-    [self stopAnimation];
+    [self stopAnimating];
 
     if (self.numberOfFrames <= 0) {
         return;
@@ -156,13 +156,11 @@ inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSour
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
 }
 
-- (void)stopAnimation
+- (void)stopAnimating
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 
     [self removeAnimationForKey:kGifAnimationKey];
-
-    self.contents = (id)[[UIImage imageWithContentsOfFile:self.gifFilePath] CGImage];
 }
 
 - (void)applicationDidEnterBackground
@@ -173,7 +171,7 @@ inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSour
 - (void)applicationWillEnterForeground
 {
     self.speed = 1.0;
-    [self startAnimation];
+    [self startAnimating];
 }
 
 - (void)setGifFilePath:(NSString *)gifFilePath

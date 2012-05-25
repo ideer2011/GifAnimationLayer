@@ -11,8 +11,8 @@
 @interface GifAnimationLayer : CALayer
 
 + (id)layerWithGifFilePath:(NSString *)filePath;
-- (void)startAnimation;
-- (void)stopAnimation;
+- (void)startAnimating;
+- (void)stopAnimating;
 
 @property (nonatomic,strong) NSString *gifFilePath;
 @property (nonatomic,assign) NSUInteger currentGifFrameIndex;
