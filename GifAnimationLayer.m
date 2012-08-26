@@ -2,8 +2,8 @@
 //  GifAnimationLayer.m
 //  GifAnimationLayer
 //
-//  Created by Zhang Yi <zhangyi.cn@gmail.com> on 12-5-24.
-//  Copyright (c) 2012年 iDeer Inc.
+//  Created by Zhang Yi <zhangyi.cn@gmail.com> on 2012-5-24.
+//  Copyright (c) 2012年 iDeer inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining
 //  a copy of this software and associated documentation files (the
@@ -23,6 +23,7 @@
 //  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 //  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 //  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
 #import "GifAnimationLayer.h"
 #import <ImageIO/ImageIO.h>
@@ -31,30 +32,32 @@ static NSString * const kGifAnimationKey = @"GifAnimation";
 
 inline static double CGImageSourceGetGifFrameDelay(CGImageSourceRef imageSource, NSUInteger index)
 {
-    double frameDuration = 0;
-    CFDictionaryRef theImageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, index, NULL);
-    if (theImageProperties) {
-        CFDictionaryRef gifProperties = CFDictionaryGetValue(theImageProperties, kCGImagePropertyGIFDictionary);
-        if (gifProperties) {
-            NSNumber *frameDurationValue = (__bridge NSNumber *)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFUnclampedDelayTime);
-            frameDuration = [frameDurationValue floatValue];
-            if (frameDuration <= 0) {
-                frameDuration = [(__bridge NSNumber *)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFDelayTime) floatValue];
+    double frameDuration = 0.0f;
+
+    CFDictionaryRef theImageProperties;
+    if ((theImageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, index, NULL))) {
+        CFDictionaryRef gifProperties;
+        if (CFDictionaryGetValueIfPresent(theImageProperties, kCGImagePropertyGIFDictionary, (const void **)&gifProperties)) {
+            const void *frameDurationValue;
+            if (CFDictionaryGetValueIfPresent(gifProperties, kCGImagePropertyGIFUnclampedDelayTime, &frameDurationValue)) {
+                frameDuration = [(__bridge NSNumber *)frameDurationValue floatValue];
                 if (frameDuration <= 0) {
-                    NSLog(@"bad frame duration for %@, %d, %f, fixing...(set to 1/15)", imageSource, index, frameDuration);
-                    frameDuration = 1.0f/15;
+                    if (CFDictionaryGetValueIfPresent(gifProperties, kCGImagePropertyGIFDelayTime, &frameDurationValue)) {
+                        frameDuration = [(__bridge NSNumber *)frameDurationValue floatValue];
+                    }
                 }
             }
         }
         CFRelease(theImageProperties);
     }
+
     return frameDuration;
 }
 
 inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSource)
 {
     NSUInteger loopCount = 0;
-    CFDictionaryRef properties = CGImageSourceCopyProperties(imageSource, NULL);
+    CFDictionaryRef properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
     if (properties) {
         NSNumber *loopCountValue =  (__bridge NSNumber *)CFDictionaryGetValue(properties, kCGImagePropertyGIFLoopCount);
         loopCount = [loopCountValue unsignedIntegerValue];
@@ -63,17 +66,34 @@ inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSour
     return loopCount;
 }
 
+inline static BOOL CGImageSourceHasAlpha(CGImageSourceRef imageSource)
+{
+    const void * result = NULL;
+
+    CFDictionaryRef theImageProperties;
+    if ((theImageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL))) {
+        result = CFDictionaryGetValue(theImageProperties, kCGImagePropertyHasAlpha);
+        CFRelease(theImageProperties);
+    }
+    return result == kCFBooleanTrue;
+}
+
 @interface GifAnimationLayer () {
     NSTimeInterval *_frameDurationArray;
     NSTimeInterval _totalDuration;
 }
 
 - (CGImageRef)copyImageAtFrameIndex:(NSUInteger)index;
+
+@property (nonatomic,assign) NSUInteger currentGifFrameIndex;
 @property (nonatomic,readonly) NSUInteger numberOfFrames;
 @property (nonatomic,readonly) NSUInteger loopCount;
+
 @end
 
-@implementation GifAnimationLayer
+@implementation GifAnimationLayer {
+    CGImageSourceRef _imageSource;
+}
 
 @synthesize gifFilePath=_gifFilePath;
 @synthesize currentGifFrameIndex=_currentGifFrameIndex;
@@ -121,13 +141,17 @@ inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSour
         _numberOfFrames = 0;
         _totalDuration  = 0;
     }
+
+    if (_imageSource) {
+        CFRelease(_imageSource);
+    }
 }
 
 - (void)startAnimating
 {
     [self stopAnimating];
 
-    if (self.numberOfFrames <= 0) {
+    if (!_imageSource || self.numberOfFrames <= 0) {
         return;
     }
 
@@ -199,52 +223,49 @@ inline static NSUInteger CGImageSourceGetGifLoopCount(CGImageSourceRef imageSour
         _numberOfFrames = 0;
     }
 
-    _totalDuration  = 0;
+    if (_imageSource) {
+        CFRelease(_imageSource);
+    }
 
+    _totalDuration  = 0;
     _gifFilePath = gifFilePath;
-    self.contents = (id)[[UIImage imageWithContentsOfFile:gifFilePath] CGImage];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.opaque = YES;
+    [CATransaction commit];
 
     // update numberOfFrames and frameDurationArray
-    const CFStringRef optionKeys[2] = {kCGImageSourceShouldCache, kCGImageSourceShouldAllowFloat};
-    const CFStringRef optionValues[2] = {(CFTypeRef)kCFBooleanFalse, (CFTypeRef)kCFBooleanTrue};
+    const CFStringRef optionKeys[1]   = {kCGImageSourceShouldCache};
+    const CFStringRef optionValues[1] = {(CFTypeRef)kCFBooleanFalse};
     CFDictionaryRef options = CFDictionaryCreate(NULL, (const void **)optionKeys, (const void **)optionValues, 2, &kCFTypeDictionaryKeyCallBacks, & kCFTypeDictionaryValueCallBacks);
-    CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:self.gifFilePath], options);
+    _imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:self.gifFilePath], options);
     CFRelease(options);
-    if (imageSource) {
-        _numberOfFrames = CGImageSourceGetCount(imageSource);
-        _loopCount = CGImageSourceGetGifLoopCount(imageSource);
+
+    if (_imageSource) {
+        _numberOfFrames = CGImageSourceGetCount(_imageSource);
+        _loopCount = CGImageSourceGetGifLoopCount(_imageSource);
 
         _frameDurationArray = (NSTimeInterval *) malloc(_numberOfFrames * sizeof(NSTimeInterval));
         for (NSUInteger i=0; i<_numberOfFrames; ++i) {
-            _frameDurationArray[i] = CGImageSourceGetGifFrameDelay(imageSource, i);
+            _frameDurationArray[i] = CGImageSourceGetGifFrameDelay(_imageSource, i);
             _totalDuration += _frameDurationArray[i];
         }
 
-        CFRelease(imageSource);
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        self.opaque = !CGImageSourceHasAlpha(_imageSource);
+        [CATransaction commit];
     }
 }
 
 - (CGImageRef)copyImageAtFrameIndex:(NSUInteger)index
 {
-    if (nil == self.gifFilePath || index > _numberOfFrames) {
+    if (!_imageSource || index > _numberOfFrames) {
         return nil;
     }
 
-    const CFStringRef optionKeys[2] = {kCGImageSourceShouldCache, kCGImageSourceShouldAllowFloat};
-    const CFStringRef optionValues[2] = {(CFTypeRef)kCFBooleanFalse, (CFTypeRef)kCFBooleanTrue};
-    CFDictionaryRef options = CFDictionaryCreate(NULL, (const void **)optionKeys, (const void **)optionValues, 2, &kCFTypeDictionaryKeyCallBacks, & kCFTypeDictionaryValueCallBacks);
-    CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:self.gifFilePath], options);
-    CFRelease(options);
-    if (imageSource == NULL) {
-        return nil;
-    }
-
-    CGImageRef theImage = CGImageSourceCreateImageAtIndex(imageSource, index, NULL);
-    if (theImage == NULL) {
-        CFRelease(imageSource);
-        return nil;
-    }
-    CFRelease(imageSource);
+    CGImageRef theImage = CGImageSourceCreateImageAtIndex(_imageSource, index, NULL);
 
     return theImage;
 }
