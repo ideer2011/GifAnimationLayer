@@ -2,7 +2,7 @@
 //  GifAnimationLayer.h
 //  GifAnimationLayer
 //
-//  Created by Zhang Yi <zhangyi.cn@gmail.com> on 12-5-24.
+//  Created by Zhang Yi <zhangyi.cn@gmail.com> on 2012-5-24.
 //  Copyright (c) 2012年 iDeer Inc.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining
@@ -23,6 +23,7 @@
 //  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 //  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 //  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
 #import <QuartzCore/QuartzCore.h>
 
@@ -33,6 +34,5 @@
 - (void)stopAnimating;
 
 @property (nonatomic,strong) NSString *gifFilePath;
-@property (nonatomic,assign) NSUInteger currentGifFrameIndex;
 
 @end
