@@ -81,6 +81,7 @@ inline static BOOL CGImageSourceHasAlpha(CGImageSourceRef imageSource)
 @interface GifAnimationLayer () {
     NSTimeInterval *_frameDurationArray;
     NSTimeInterval _totalDuration;
+    BOOL _paused;
 }
 
 - (CGImageRef)copyImageAtFrameIndex:(NSUInteger)index;
@@ -213,7 +214,24 @@ inline static BOOL CGImageSourceHasAlpha(CGImageSourceRef imageSource)
 - (void)applicationWillEnterForeground
 {
     self.speed = 1.0;
-    [self startAnimating];
+    if (!_paused) {
+        [self startAnimating];
+    }
+}
+
+- (void)pauseAnimating
+{
+    self.speed = 0.0;
+    _paused    = YES;
+}
+
+- (void)resumeAnimating
+{
+    self.speed = 1.0;
+    _paused    = NO;
+    if (![self animationForKey:kGifAnimationKey]) {
+        [self startAnimating];
+    }
 }
 
 - (void)setGifFilePath:(NSString *)gifFilePath
@@ -257,6 +275,9 @@ inline static BOOL CGImageSourceHasAlpha(CGImageSourceRef imageSource)
         self.opaque = !CGImageSourceHasAlpha(_imageSource);
         [CATransaction commit];
     }
+
+    [self setCurrentGifFrameIndex:0];
+    [self display];
 }
 
 - (CGImageRef)copyImageAtFrameIndex:(NSUInteger)index
