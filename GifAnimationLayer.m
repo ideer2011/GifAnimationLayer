@@ -256,7 +256,7 @@ inline static BOOL CGImageSourceHasAlpha(CGImageSourceRef imageSource)
     // update numberOfFrames and frameDurationArray
     const CFStringRef optionKeys[1]   = {kCGImageSourceShouldCache};
     const CFStringRef optionValues[1] = {(CFTypeRef)kCFBooleanFalse};
-    CFDictionaryRef options = CFDictionaryCreate(NULL, (const void **)optionKeys, (const void **)optionValues, 2, &kCFTypeDictionaryKeyCallBacks, & kCFTypeDictionaryValueCallBacks);
+    CFDictionaryRef options = CFDictionaryCreate(NULL, (const void **)optionKeys, (const void **)optionValues, 1, &kCFTypeDictionaryKeyCallBacks, & kCFTypeDictionaryValueCallBacks);
     _imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:self.gifFilePath], options);
     CFRelease(options);
 
