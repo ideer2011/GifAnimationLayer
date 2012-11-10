@@ -189,6 +189,11 @@ inline static BOOL CGImageSourceHasAlpha(CGImageSourceRef imageSource)
         lastDurationFraction = currentDurationFraction;
         [keyTimes addObject:[NSNumber numberWithDouble:currentDurationFraction]];
     }
+    
+    //add final destination value
+    [values addObject:[NSNumber numberWithUnsignedInteger:self.numberOfFrames]];
+    [keyTimes addObject:[NSNumber numberWithDouble:1.0]];
+
     animation.values   = values;
     animation.keyTimes = keyTimes;
     animation.duration = _totalDuration;
